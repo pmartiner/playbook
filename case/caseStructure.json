@@ -1,0 +1,16 @@
+{
+    "scoreGap": "number",
+    "timeLeft": "number",
+    "currentDown": "number",
+    "yardsLeft1stDown": "number",
+    "home": "boolean",
+    "currentYard": "number",
+    "opponent": "string",
+    "currentTeam": "string",
+    "year": "number",
+    "optional": {
+        "success": "boolean",
+        "successFailReason": "string",
+        "avgDVOA": "number"
+    }
+}
