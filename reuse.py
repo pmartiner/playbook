@@ -2,6 +2,15 @@ import json
 import numpy as np
 import pandas as pd
 
+
+# En caso de que no hayan casos elegidos ("no existan casos"),
+# entonces el retrieve debe inicializar un caso (un JSON) con la sig. info:
+# 1) currentTeam
+# 2) opponent
+# 3) year
+# 4) resto de los datos en la pos. actual en la que se encuentra el usuario
+
+# (1) y (2) necesitan estar en el formato del diccionario "teams" encontrado más abajo
 with open('example.json', 'r') as myfile:
     data=myfile.read()
 
@@ -116,51 +125,83 @@ df_quartersHalvesDVOA = pd.read_csv('./data/{year} DVOA by Quarters and Halves O
 df_singleGameDVOA = pd.read_csv('./data/{year} Single-Game DVOA Ratings {team}.csv'.format(year = case['year'], team = teams[case['currentTeam']]), index_col='Opponent')
 df_scoreGapDVOA = pd.read_csv('./data/{year} DVOA by Score Gap Offense.csv'.format(year = case['year']), index_col=0)
 
-
+avgOffensivePlaysPerGame = 64
+logDVOAs = []
 
 def reuse():
   team = case['currentTeam']
-  # print(df_teamRatingsDVOA.loc[team, :])
-  caseDwnYrd = df_downDistanceDVOA.loc[team, dwnYrd].replace('%', '')
-  # print(df_downTypePlayDVOA.loc[team, :])
-  caseCyp = df_fieldZoneDVOA.loc[team, cyp].replace('%', '')
-  caseHm = df_homeDVOA.loc[team, hm].replace('%', '')
-  caseTl = df_quartersHalvesDVOA.loc[team, tl].replace('%', '')
-  caseAvgOffensiveDVOA = df_singleGameDVOA.loc[case['opponent'], 'Offense DVOA'].replace('%', '')
-  casePassPlayDVOA = df_singleGameDVOA.loc[case['opponent'], 'Offense Pass DVOA'].replace('%', '')
-  caseRushPlayDVOA = df_singleGameDVOA.loc[case['opponent'], 'Offense Rush DVOA'].replace('%', '')
-  caseSd = df_scoreGapDVOA.loc[team, sd].replace('%', '')
   
-  currentState = sorted([
-      round(float(caseDwnYrd)/100, 4),
-      round(float(caseCyp)/100, 4),
-      round(float(caseHm)/100, 4),
-      round(float(caseTl)/100, 4),
-      round(float(caseSd)/100, 4)
-    ], reverse=True)
-  
-  caseAvgOffensiveRivalDVOA = round(float(caseAvgOffensiveDVOA)/100, 4)
-  
-  currentStateWeighted = np.array([
-    0.5*currentState[0],
-    0.25*currentState[1],
-    0.125*currentState[2],
-    0.0625*currentState[3],
-    0.0625*currentState[4]
-  ])
-  
-  estimatedDVOA = round(np.mean(currentStateWeighted), 4)
-
-  successProbability = abs(rng.random() * caseAvgOffensiveRivalDVOA)
-  
-  successfulPassDVOA = round(float(casePassPlayDVOA)/100, 4)
-  successfulRushDVOA = round(float(caseRushPlayDVOA)/100, 4)
+  for x in range(avgOffensivePlaysPerGame):
+      # print(df_teamRatingsDVOA.loc[team, :])
+      caseDwnYrd = df_downDistanceDVOA.loc[team, dwnYrd].replace('%', '')
+      # print(df_downTypePlayDVOA.loc[team, :])
+      caseCyp = df_fieldZoneDVOA.loc[team, cyp].replace('%', '')
+      caseHm = df_homeDVOA.loc[team, hm].replace('%', '')
+      caseTl = df_quartersHalvesDVOA.loc[team, tl].replace('%', '')
+      caseAvgOffensiveDVOA = df_singleGameDVOA.loc[case['opponent'], 'Offense DVOA'].replace('%', '')
+      casePassPlayDVOA = df_singleGameDVOA.loc[case['opponent'], 'Offense Pass DVOA'].replace('%', '')
+      caseRushPlayDVOA = df_singleGameDVOA.loc[case['opponent'], 'Offense Rush DVOA'].replace('%', '')
+      caseSd = df_scoreGapDVOA.loc[team, sd].replace('%', '')
+      
+      currentState = sorted([
+          round(float(caseDwnYrd)/100, 4),
+          round(float(caseCyp)/100, 4),
+          round(float(caseHm)/100, 4),
+          round(float(caseTl)/100, 4),
+          round(float(caseSd)/100, 4)
+        ], reverse=True)
+      
+      caseAvgOffensiveRivalDVOA = round(float(caseAvgOffensiveDVOA)/100, 4)
+      
+      currentStateWeighted = np.array([
+        0.5*currentState[0],
+        0.25*currentState[1],
+        0.125*currentState[2],
+        0.0625*currentState[3],
+        0.0625*currentState[4]
+      ])
+      
+      estimatedDVOA = round(np.mean(currentStateWeighted), 4)
     
-  estimatedSuccessfulPassPlayDVOA = successfulPassDVOA * estimatedDVOA
-  estimatedSuccessfulRushPlayDVOA = successfulRushDVOA * estimatedDVOA
-  
-  passSuccessProbability = abs(successProbability * estimatedSuccessfulPassPlayDVOA)
-  rushSuccessProbability = abs(successProbability * estimatedSuccessfulRushPlayDVOA)
+      logDVOAs.append(estimatedDVOA)
+    
+      successProbability = abs(rng.random() * caseAvgOffensiveRivalDVOA)
+      
+      successfulPassDVOA = round(float(casePassPlayDVOA)/100, 4)
+      successfulRushDVOA = round(float(caseRushPlayDVOA)/100, 4)
+        
+      estimatedSuccessfulPassPlayDVOA = successfulPassDVOA * estimatedDVOA
+      estimatedSuccessfulRushPlayDVOA = successfulRushDVOA * estimatedDVOA
+      
+      passSuccessProbability = abs(rng.random() * estimatedSuccessfulPassPlayDVOA)
+      rushSuccessProbability = abs(rng.random() * estimatedSuccessfulRushPlayDVOA)
+      
+      if passSuccessProbability >= successProbability and rushSuccessProbability >= successProbability:
+        print('Apply UDVOA/UALY. Select random play after, no matter its type')
+      elif passSuccessProbability > successProbability and rushSuccessProbability < successProbability:
+        print('Apply UDVOA/UALY. Select pass play after, no matter its route')
+      elif passSuccessProbability < successProbability and rushSuccessProbability > successProbability:
+        print('Apply UDVOA/UALY. Select rush play after, no matter its route')
+      elif passSuccessProbability < successProbability and rushSuccessProbability < successProbability:
+        print('Apply UDVOA/UALY. Select random play after, no matter its type')
+      # agregar +1 al contador de la jugada seleccionada para poder hacer uso de la frecuencia presente del UALY/UDVOA
+      
+      # cómo estimamos el efecto de la jugada tirada sobre el DVOA estimado por estado?
+      # análisis por casos:
+      # caso exitoso: aumenta el DVOA
+      # caso fallido: decrementa el DVOA
+      # en cualquiera de estos, el estado lo tenemos que cambiar
 
-  print(currentState, currentStateWeighted, estimatedDVOA*100, passSuccessProbability, rushSuccessProbability)
+  gameEstimatedDVOA = np.mean(logDVOAs)
+  print(gameEstimatedDVOA)
+  
+  """
+      if caseAvgOffensiveRivalDVOA > gameEstimatedDVOA:
+          print('In average, we estimate that our plays where not as successful as the ones thrown in {year}'.format(year = case['year']))
+      elif caseAvgOffensiveRivalDVOA < gameEstimatedDVOA:
+          print('In average, we estimate that our plays where more successful as the ones thrown in {year}'.format(year = case['year']))
+      else:
+          print('In average, we estimate that our plays where as successful as the ones thrown in {year}'.format(year = case['year']))
+  """
+  # Comparar
   return
